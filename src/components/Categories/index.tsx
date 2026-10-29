@@ -1,7 +1,6 @@
 import { CategoriesWrapper, CategoryLable } from './index.style'
 import React from 'react'
-import { Category } from '@/constants/categories'
-import { slugify } from '@/utils/helpers'
+import { BLOG_CATEGORY_NAMES, BLOG_CATEGORY_SLUGS } from '@/types/blog'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
@@ -13,17 +12,16 @@ const Categories: React.FC = () => {
       <Link href="/" key="home">
         <CategoryLable $actived={!params?.category}>Home</CategoryLable>
       </Link>
-      {Object.entries(Category).map(([_key, value]) => (
-        <Link href={`/categories/${slugify(value)}`} key={value}>
+      {BLOG_CATEGORY_SLUGS.map((category) => (
+        <Link href={`/categories/${category}`} key={category}>
           <CategoryLable
-            $actived={params?.category === slugify(value)}
-            key={value}
+            $actived={params?.category === category}
+            key={category}
           >
-            {value}
+            {BLOG_CATEGORY_NAMES[category]}
           </CategoryLable>
         </Link>
       ))}
-      ,
     </CategoriesWrapper>
   )
 }

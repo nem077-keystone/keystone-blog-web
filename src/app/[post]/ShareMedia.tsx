@@ -7,8 +7,9 @@ import { BLOG_HOME_PAGE } from '@/constants/links'
 import { Share, ShareMediaContainer } from './index.style'
 import Notification from '@/components/Notification'
 import useIsMobile from '@/hooks/useMobile'
+import type { BlogPost } from '@/types/blog'
 
-export default function ShareMedia({ post }: { post: any }) {
+export default function ShareMedia({ post }: { post: BlogPost }) {
   const [isShowNotification, setIsShowNotification] = useState(false)
   const [message, setMessage] = useState('')
   const isMobile = useIsMobile()
@@ -20,7 +21,7 @@ export default function ShareMedia({ post }: { post: any }) {
             <span>SHARE</span>
           </Share>
           <Media
-            url={`${BLOG_HOME_PAGE}/${post.attributes.slug}`}
+            url={`${BLOG_HOME_PAGE}/${post.slug}`}
             setIsShowNotification={() => setIsShowNotification(true)}
             setMessage={setMessage}
           />
@@ -43,7 +44,7 @@ export default function ShareMedia({ post }: { post: any }) {
         transition="slide bottom-10"
         content={
           <Media
-            url={`${BLOG_HOME_PAGE}/${post.attributes.slug}`}
+            url={`${BLOG_HOME_PAGE}/${post.slug}`}
             setIsShowNotification={() => setIsShowNotification(true)}
             setMessage={setMessage}
           />

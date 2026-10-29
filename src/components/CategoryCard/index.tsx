@@ -5,13 +5,13 @@ import {
   Title,
 } from './index.style'
 import React, { FC } from 'react'
-import { PostModel } from '../../types/homePageType'
+import type { PostCardModel } from '../../types/homePageType'
 import Image from 'next/image'
 import { Category, CategoryAndPublishTime } from '../SubHeroCard/index.style'
 import { CATEGORY_COLOR_MAPPER } from '@/constants/categories'
 
 interface CategoryCardProps {
-  post: PostModel
+  post: PostCardModel
   className?: string
 }
 const CategoryCard: FC<CategoryCardProps> = ({ post, className }) => {

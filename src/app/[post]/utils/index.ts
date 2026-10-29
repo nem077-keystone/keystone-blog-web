@@ -1,1 +1,1 @@
-export { postConverter, getPublishTime } from './postConverter'
+export { toPostCard, toPostDetail, getPublishTime } from './postConverter'
