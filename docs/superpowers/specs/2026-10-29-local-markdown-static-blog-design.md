@@ -28,23 +28,24 @@ Each article is a `.md` file with YAML front matter followed by Markdown body co
 
 ```markdown
 ---
-title: "Article title"
-slug: "article-slug"
-summary: "Short article summary"
-publishedAt: "2026-10-29"
-updatedAt: "2026-10-29"
-heroImage: "/images/blog/hardware-wallet/article-slug/hero.webp"
-locale: "en"
+title: 'Article title'
+slug: 'article-slug'
+summary: 'Short article summary'
+updatedAt: '2026-10-29'
+heroImage: '/images/blog/hardware-wallet/article-slug/hero.webp'
+locale: 'en'
 seo:
-  title: "Optional SEO title"
-  description: "Optional SEO description"
-  canonicalURL: "https://blog.keyst.one/article-slug"
+  title: 'Optional SEO title'
+  description: 'Optional SEO description'
+  canonicalURL: 'https://blog.keyst.one/article-slug'
 ---
 
 Article body.
 ```
 
-Required fields are `title`, `slug`, `summary`, `publishedAt`, `updatedAt`, and `heroImage`. `locale` defaults to `en`. The entire `seo` object and each of its properties are optional.
+Required fields are `title`, `slug`, `summary`, `updatedAt`, and `heroImage`. `publishedAt` is optional and is used only when an article needs to preserve a distinct historical first-publication date. When it is omitted, the repository resolves `publishedAt` to `updatedAt`, so downstream page models and structured data always receive a valid publication date. `locale` defaults to `en`. The entire `seo` object and each of its properties are optional.
+
+The existence of a Markdown file in one of the six scanned category directories means the article is published. There is no local draft-state field. Authors who need a draft keep the file outside the scanned category directories.
 
 A non-published example Markdown template will be included for authors to copy. The loader will only scan `.md` files directly within the six category directories, so the template will live outside those directories.
 
@@ -87,7 +88,7 @@ A server-only content module will be the single source of blog data. It will:
 1. Scan the six allowed category directories at build time.
 2. Parse YAML front matter and Markdown body content.
 3. Derive the display category from the directory.
-4. Validate required fields, dates, root-relative image paths, unique slugs, and homepage references.
+4. Validate required fields, the required `updatedAt` date, an optional `publishedAt` date, root-relative image paths, unique slugs, and homepage references.
 5. Return all articles sorted by `updatedAt` descending, articles for a category, an article by slug, and resolved homepage content.
 
 The module will expose typed domain objects directly. It will not preserve the Strapi `data.attributes` response wrapper. Page and component types will be simplified to consume the local domain model.
@@ -99,6 +100,7 @@ No browser bundle may import the filesystem content module. Server pages load co
 - The homepage, category pages, post detail pages, metadata, structured data, and sitemap all use the build-time content module.
 - Existing routes remain unchanged: `/`, `/categories/<category>`, and `/<post-slug>`.
 - Post routes are generated from local slugs using `generateStaticParams` and no longer force dynamic rendering.
+- Page display dates and JSON-LD `datePublished` use the resolved publication date: an explicit `publishedAt` when present, otherwise `updatedAt`.
 - Category routes continue to be generated for all six configured categories, including empty categories.
 - Home latest articles are ordered by `updatedAt` descending.
 - Category articles use the same `updatedAt` descending order.
@@ -125,7 +127,7 @@ The initial empty content structure must build successfully. `null` Hero paths a
 Once content is added, these conditions fail the build with a message containing the relevant file and field:
 
 - malformed or missing required front matter;
-- an invalid `publishedAt` or `updatedAt` value;
+- an invalid `updatedAt` value or an invalid non-empty `publishedAt` value;
 - an image URL that is not root-relative;
 - a duplicate article slug;
 - an unknown category directory passed to the loader;
@@ -157,6 +159,7 @@ Automated tests will cover:
 - lookup by slug and category;
 - homepage Hero path resolution, including nullable Heroes;
 - default locale and SEO fallbacks;
+- optional `publishedAt` fallback to `updatedAt`, while preserving explicit historical publication dates;
 - duplicate slugs, invalid dates, invalid image paths, and invalid homepage references;
 - post presentation conversion where existing rendering tests require it.
 

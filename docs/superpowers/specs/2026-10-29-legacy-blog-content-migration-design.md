@@ -36,6 +36,7 @@ Create a reusable script at `scripts/migrate-legacy-posts.mjs`. The script will:
 5. Generate all Markdown and the homepage configuration in staging.
 6. Replace the generated content and asset targets only after all required work succeeds.
 7. Write `temporary/migration-report.json` with counts, generated paths, fallbacks, and failed optional image downloads.
+8. Maintain `temporary/failed-image-downloads.json` as an immediate, standalone record of final image download failures.
 
 Rerunning the script against unchanged input must produce the same Markdown paths, front matter, homepage configuration, and local image references. Generated article directories may be replaced, but unrelated files outside the six content directories and `public/images/blog/` must not be touched.
 
@@ -56,14 +57,14 @@ The original source slug is written unchanged to Front Matter. Filename normaliz
 
 Map source category values to directories as follows:
 
-| Source category | Target directory |
-| --- | --- |
+| Source category | Target directory   |
+| --------------- | ------------------ |
 | Hardware Wallet | `hardware-wallet/` |
 | Crypto Security | `crypto-security/` |
-| Bitcoin | `bitcoin/` |
-| Partnerships | `partnerships/` |
-| Enterprise | `enterprise/` |
-| Other | `other/` |
+| Bitcoin         | `bitcoin/`         |
+| Partnerships    | `partnerships/`    |
+| Enterprise      | `enterprise/`      |
+| Other           | `other/`           |
 
 Any unknown category is a fatal validation error.
 
@@ -73,17 +74,17 @@ Each generated Markdown file uses the supported local format:
 
 ```yaml
 ---
-title: "<source title>"
-slug: "<source slug, unchanged>"
-summary: "<resolved summary>"
-publishedAt: "<source published_at>"
-updatedAt: "<source updated_at or updated*at>"
-heroImage: "/images/blog/<category>/<slug>/hero.<ext>"
-locale: "<source locale or en>"
+title: '<source title>'
+slug: '<source slug, unchanged>'
+summary: '<resolved summary>'
+publishedAt: '<source published_at>'
+updatedAt: '<source updated_at or updated*at>'
+heroImage: '/images/blog/<category>/<slug>/hero.<ext>'
+locale: '<source locale or en>'
 seo:
-  title: "<source seo.metaTitle when non-empty>"
-  description: "<source seo.metaDescription when non-empty>"
-  canonicalURL: "<source seo.canonicalURL when non-empty>"
+  title: '<source seo.metaTitle when non-empty>'
+  description: '<source seo.metaDescription when non-empty>'
+  canonicalURL: '<source seo.canonicalURL when non-empty>'
 ---
 ```
 
@@ -135,6 +136,16 @@ Body images:
 
 Downloads use bounded concurrency, request timeouts, and retries. A response must be successful and contain an image content type. The script must not download ordinary hyperlinks.
 
+At the start of each run, initialize `temporary/failed-image-downloads.json` with an empty `failures` array. After all retries for an image URL are exhausted, immediately rewrite this file with an entry containing:
+
+- `sourceUrl`: the original remote image URL;
+- `articleSlug`: the article that referenced it;
+- `imageType`: `hero` or `body`;
+- `error`: the final download or validation error;
+- `failedAt`: an ISO timestamp.
+
+This file must exist even when there are no failures. Recording happens before fatal Hero errors are rethrown, so the failed URL remains available when the migration stops before producing the complete migration report. Repeated use of the same failed URL in different articles may produce separate contextual entries.
+
 ## Failure and Atomicity
 
 Fatal conditions include:
@@ -149,7 +160,7 @@ Fatal conditions include:
 - any missing or failed Hero image download;
 - generated content failing the local repository validation.
 
-Body image failures are non-fatal and remain remote. The migration report lists the article, source URL, and error.
+Body image failures are non-fatal and remain remote. The migration report lists the article, source URL, and error. Both Hero and body download failures are also written immediately to `temporary/failed-image-downloads.json`; this standalone file does not depend on successful staging or target replacement.
 
 Use a temporary staging directory. Do not replace final content or assets until parsing, required downloads, Markdown generation, and repository validation all succeed. Clean staging data after success or failure.
 
@@ -166,6 +177,7 @@ Verification must confirm:
 - every generated Hero path exists locally;
 - successful body image references point to existing local files;
 - failed body image references are listed in the report;
+- the standalone failure JSON exists, is valid JSON, and contains every exhausted Hero or body download with its article context;
 - the content repository can parse and query every migrated article;
 - Jest, TypeScript, lint, and the production build pass, subject only to external font network availability already present in the project.
 

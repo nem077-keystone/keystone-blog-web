@@ -1,9 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import {
-  BLOG_CATEGORY_NAMES,
-  BLOG_CATEGORY_SLUGS,
-} from '@/types/blog'
+import { BLOG_CATEGORY_NAMES, BLOG_CATEGORY_SLUGS } from '@/types/blog'
 import type {
   BlogCategorySlug,
   BlogPost,
@@ -44,12 +41,16 @@ const REQUIRED_FIELDS = [
   'title',
   'slug',
   'summary',
-  'publishedAt',
   'updatedAt',
   'heroImage',
 ] as const
 
-const TOP_LEVEL_FIELDS = new Set([...REQUIRED_FIELDS, 'locale', 'seo'])
+const TOP_LEVEL_FIELDS = new Set([
+  ...REQUIRED_FIELDS,
+  'publishedAt',
+  'locale',
+  'seo',
+])
 const SEO_FIELDS = new Set(['title', 'description', 'canonicalURL'])
 
 function parseScalar(value: string, sourcePath: string, field: string) {
@@ -57,9 +58,29 @@ function parseScalar(value: string, sourcePath: string, field: string) {
   if (!trimmed) return ''
 
   const quote = trimmed[0]
-  if (quote === '"' || quote === '\'') {
+  if (quote === '"') {
     if (trimmed.at(-1) !== quote) {
-      throw new Error(`${sourcePath}: ${field} has an unterminated quoted value`)
+      throw new Error(
+        `${sourcePath}: ${field} has an unterminated quoted value`
+      )
+    }
+    try {
+      const parsed: unknown = JSON.parse(trimmed)
+      if (typeof parsed !== 'string') {
+        throw new Error('expected a string')
+      }
+      return parsed
+    } catch (error) {
+      throw new Error(
+        `${sourcePath}: ${field} has an invalid double-quoted value (${(error as Error).message})`
+      )
+    }
+  }
+  if (quote === '\u0027') {
+    if (trimmed.at(-1) !== quote) {
+      throw new Error(
+        `${sourcePath}: ${field} has an unterminated quoted value`
+      )
     }
     return trimmed.slice(1, -1)
   }
@@ -73,7 +94,9 @@ function parseScalar(value: string, sourcePath: string, field: string) {
 function parseFrontMatter(fileContents: string, sourcePath: string) {
   const match = fileContents.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)
   if (!match) {
-    throw new Error(`${sourcePath}: expected YAML front matter between --- lines`)
+    throw new Error(
+      `${sourcePath}: expected YAML front matter between --- lines`
+    )
   }
 
   const data: ParsedFrontMatter = {}
@@ -84,7 +107,9 @@ function parseFrontMatter(fileContents: string, sourcePath: string) {
     const line = lines[index]
     if (!line.trim() || line.trimStart().startsWith('#')) continue
     if (line.includes('\t')) {
-      throw new Error(`${sourcePath}: line ${index + 2} contains an unsupported tab`)
+      throw new Error(
+        `${sourcePath}: line ${index + 2} contains an unsupported tab`
+      )
     }
 
     const nested = line.match(/^ {2}([A-Za-z][A-Za-z0-9]*):\s*(.*)$/)
@@ -103,7 +128,9 @@ function parseFrontMatter(fileContents: string, sourcePath: string) {
 
     const topLevel = line.match(/^([A-Za-z][A-Za-z0-9]*):\s*(.*)$/)
     if (!topLevel || !TOP_LEVEL_FIELDS.has(topLevel[1])) {
-      throw new Error(`${sourcePath}: unsupported front matter line ${index + 2}`)
+      throw new Error(
+        `${sourcePath}: unsupported front matter line ${index + 2}`
+      )
     }
 
     const key = topLevel[1] as keyof ParsedFrontMatter
@@ -124,11 +151,7 @@ function parseFrontMatter(fileContents: string, sourcePath: string) {
       throw new Error(`${sourcePath}: duplicate field ${key}`)
     }
     const writableData = data as Record<string, unknown>
-    writableData[key] = parseScalar(
-      topLevel[2],
-      sourcePath,
-      key
-    )
+    writableData[key] = parseScalar(topLevel[2], sourcePath, key)
   }
 
   return {
@@ -239,24 +262,27 @@ export function createBlogRepository(
 
         const heroImage = requiredString(data, 'heroImage', sourcePath)
         if (!heroImage.startsWith('/') || heroImage.startsWith('//')) {
-          throw new Error(`${sourcePath}: heroImage must be a root-relative path`)
+          throw new Error(
+            `${sourcePath}: heroImage must be a root-relative path`
+          )
         }
+
+        const updatedAt = normalizeDate(
+          requiredString(data, 'updatedAt', sourcePath),
+          sourcePath,
+          'updatedAt'
+        )
+        const publishedAt = data.publishedAt?.trim()
+          ? normalizeDate(data.publishedAt, sourcePath, 'publishedAt')
+          : updatedAt
 
         posts.push({
           sourcePath,
           title: requiredString(data, 'title', sourcePath),
           slug,
           summary: requiredString(data, 'summary', sourcePath),
-          publishedAt: normalizeDate(
-            requiredString(data, 'publishedAt', sourcePath),
-            sourcePath,
-            'publishedAt'
-          ),
-          updatedAt: normalizeDate(
-            requiredString(data, 'updatedAt', sourcePath),
-            sourcePath,
-            'updatedAt'
-          ),
+          publishedAt,
+          updatedAt,
           heroImage,
           locale: data.locale?.trim() || 'en',
           categorySlug,
@@ -323,10 +349,7 @@ export function createBlogRepository(
       return {
         description: config.description.trim() || DEFAULT_HOMEPAGE_DESCRIPTION,
         heroPost: resolveHomepagePost(config.heroPost, 'heroPost'),
-        subHeroFirst: resolveHomepagePost(
-          config.subHeroFirst,
-          'subHeroFirst'
-        ),
+        subHeroFirst: resolveHomepagePost(config.subHeroFirst, 'subHeroFirst'),
         subHeroSecond: resolveHomepagePost(
           config.subHeroSecond,
           'subHeroSecond'

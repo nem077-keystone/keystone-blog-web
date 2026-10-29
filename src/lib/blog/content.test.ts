@@ -1,10 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import {
-  DEFAULT_HOMEPAGE_DESCRIPTION,
-  createBlogRepository,
-} from './content'
+import { DEFAULT_HOMEPAGE_DESCRIPTION, createBlogRepository } from './content'
 import { BLOG_CATEGORY_SLUGS } from '@/types/blog'
 
 const createFixture = () => {
@@ -24,7 +21,7 @@ const createFixture = () => {
   return root
 }
 
-const article = (overrides: Record<string, string> = {}) => {
+const article = (overrides: Record<string, string | undefined> = {}) => {
   const fields = {
     title: 'Article title',
     slug: 'article-slug',
@@ -34,12 +31,15 @@ const article = (overrides: Record<string, string> = {}) => {
     heroImage: '/images/blog/bitcoin/article-slug/hero.webp',
     ...overrides,
   }
+  const publishedAt =
+    fields.publishedAt === undefined
+      ? ''
+      : `publishedAt: "${fields.publishedAt}"\n`
   return `---
 title: "${fields.title}"
 slug: "${fields.slug}"
 summary: "${fields.summary}"
-publishedAt: "${fields.publishedAt}"
-updatedAt: "${fields.updatedAt}"
+${publishedAt}updatedAt: "${fields.updatedAt}"
 heroImage: "${fields.heroImage}"
 seo:
   description: "SEO description"
@@ -91,6 +91,7 @@ describe('local blog content repository', () => {
 
   test.each([
     ['invalid date', { updatedAt: 'not-a-date' }, 'updatedAt'],
+    ['invalid publication date', { publishedAt: 'not-a-date' }, 'publishedAt'],
     ['invalid image', { heroImage: 'relative/hero.webp' }, 'heroImage'],
     ['missing title', { title: '' }, 'title'],
   ])('rejects %s', (_name, overrides, expectedField) => {
@@ -103,6 +104,43 @@ describe('local blog content repository', () => {
     expect(() => createBlogRepository(root).getAllPosts()).toThrow(
       new RegExp(`newer-post\\.md.*${expectedField}`)
     )
+  })
+
+  test.each([
+    ['omitted', undefined],
+    ['empty', ''],
+  ])('falls back to updatedAt when publishedAt is %s', (_name, publishedAt) => {
+    const root = createFixture()
+    roots.push(root)
+    fs.writeFileSync(
+      path.join(root, 'blog/hardware-wallet/newer-post.md'),
+      article({
+        slug: 'newer-post',
+        publishedAt,
+        updatedAt: '2024-04-20',
+      })
+    )
+
+    const post = createBlogRepository(root).getPostBySlug('newer-post')
+    expect(post?.publishedAt).toBe('2024-04-20T00:00:00.000Z')
+    expect(post?.updatedAt).toBe('2024-04-20T00:00:00.000Z')
+  })
+
+  test('preserves an explicit historical publishedAt', () => {
+    const root = createFixture()
+    roots.push(root)
+    fs.writeFileSync(
+      path.join(root, 'blog/hardware-wallet/newer-post.md'),
+      article({
+        slug: 'newer-post',
+        publishedAt: '2024-03-20',
+        updatedAt: '2024-04-20',
+      })
+    )
+
+    const post = createBlogRepository(root).getPostBySlug('newer-post')
+    expect(post?.publishedAt).toBe('2024-03-20T00:00:00.000Z')
+    expect(post?.updatedAt).toBe('2024-04-20T00:00:00.000Z')
   })
 
   test('rejects duplicate slugs', () => {
@@ -119,6 +157,23 @@ describe('local blog content repository', () => {
     expect(() => createBlogRepository(root).getAllPosts()).toThrow(
       /duplicate\.md.*duplicate slug/
     )
+  })
+
+  test('decodes JSON-compatible double-quoted front matter', () => {
+    const root = createFixture()
+    roots.push(root)
+    fs.writeFileSync(
+      path.join(root, 'blog/hardware-wallet/quoted.md'),
+      article({
+        title: 'A \\"quoted\\" title',
+        slug: 'quoted',
+        summary: 'Path \\\\ value',
+      })
+    )
+
+    const post = createBlogRepository(root).getPostBySlug('quoted')
+    expect(post?.title).toBe('A "quoted" title')
+    expect(post?.summary).toBe('Path \\ value')
   })
 
   test.each(['missing.md', '../article-template.md'])(
