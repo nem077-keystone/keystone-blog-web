@@ -27,9 +27,6 @@
             "@testing-library/jest-dom"
         ],
         "paths": {
-            "*": [
-                "types/*.d.ts"
-            ],
             "@/components/*": [
                 "src/components/*"
             ],

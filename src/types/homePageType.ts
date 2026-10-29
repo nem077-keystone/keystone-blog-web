@@ -1,65 +1,13 @@
-import { Category } from '../constants/categories'
+import type { BlogCategoryName, BlogCategorySlug } from './blog'
 
-const {
-  HardwareWallet,
-  CryptoSecurity,
-  Bitcoin,
-  Partnerships,
-  Enterprise,
-  Other,
-} = Category
-
-export interface PostModel {
+export interface PostCardModel {
   slug: string
   title: string
-  category: string
+  category: BlogCategoryName
+  categorySlug: BlogCategorySlug
   publishTime: string
   heroImage: {
     name: string
     url: string
   }
 }
-
-export interface Homepage {
-  description: string
-  heroPost: Post
-  subHeroFirst: Post
-  subHeroSecond: Post
-  latests: Post[]
-  pagination?: Record<string, number>
-}
-
-export interface HomepageModule {
-  description: string
-  heroPost: PostModel
-  subHeroFirst: PostModel
-  subHeroSecond: PostModel
-  latests: PostModel[]
-}
-
-export interface Post {
-  id: number
-  attributes: {
-    body_text: string
-    title: string
-    category: string
-    summary: string
-    createdAt: string
-    updatedAt: string
-    publishedAt: string
-    locale: string
-    slug: string
-    hero_image: {
-      data: {
-        id: number
-        attributes: {
-          name: string
-          url: string
-        }
-      }
-    }
-    published_at: string
-  }
-}
-
-export type CategoryActivedType = keyof typeof Category | 'All' | (string & {})

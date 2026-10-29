@@ -7,17 +7,17 @@ import {
   PublishTime,
   Title,
 } from './index.style'
-import { PostModel } from '../../types/homePageType'
+import type { PostCardModel } from '../../types/homePageType'
 import Image from 'next/image'
 import { CATEGORY_COLOR_MAPPER } from '../../constants/categories'
 
 interface SubHeroCardProps {
-  post: PostModel
+  post: PostCardModel
 }
 const SubHeroCard: FC<SubHeroCardProps> = ({ post }) => {
   if (!post) return null
   return (
-    <SubHeroCardWrapper href={post.slug}>
+    <SubHeroCardWrapper href={`/${post.slug}`}>
       <Image
         src={post.heroImage.url}
         alt={post.heroImage.name}

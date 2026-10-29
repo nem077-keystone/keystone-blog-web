@@ -26,13 +26,13 @@ import {
 } from './index.style'
 import vector from '@/../public/vector.svg'
 import Image from 'next/image'
-import { marked } from 'marked'
 import MainSiteModule from '@/components/MainSiteModule'
-import markedAlert from 'marked-alert'
 import { CATEGORY_COLOR_MAPPER } from '@/constants/categories'
 import ShareMedia from './ShareMedia'
-import { HeadingItem } from './utils/markdown'
+import type { HeadingItem } from './utils/markdown'
 import useIsMobile from '@/hooks/useMobile'
+import type { BlogPost } from '@/types/blog'
+import type { PostDetailModel } from '@/types/postDetailPageType'
 
 const TableOfContents = ({ headings }: { headings: HeadingItem[] }) => {
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
@@ -61,17 +61,24 @@ const TableOfContents = ({ headings }: { headings: HeadingItem[] }) => {
   );
 }
 
-export default function Content({ article, postModel, minutesToRead }: any) {
+interface ContentProps {
+  article: BlogPost
+  postModel: PostDetailModel
+  minutesToRead: number
+}
+
+export default function Content({
+  article,
+  postModel,
+  minutesToRead,
+}: ContentProps) {
   const isMobile = useIsMobile();
   return (
     <PostContainer>
       <TopBanner>
         <PostInfo>
           <Category
-            color={
-              CATEGORY_COLOR_MAPPER[article.attributes.category]
-                ?.fontColorInDarkBg
-            }
+            color={CATEGORY_COLOR_MAPPER[article.category].fontColorInDarkBg}
           >
             {postModel.category}
           </Category>
@@ -100,9 +107,14 @@ export default function Content({ article, postModel, minutesToRead }: any) {
                 <span>Blog Home</span>
               </BackToHome>
               <picture>
-                <img src="/banner-arrow.svg" alt="banner-arrow" width={20} height={20} />
+                <img
+                  src="/banner-arrow.svg"
+                  alt="banner-arrow"
+                  width={20}
+                  height={20}
+                />
               </picture>
-              <BackToHome href={`categories/${postModel.category.toLowerCase().split(' ').join('-')}`}>
+              <BackToHome href={`/categories/${postModel.categorySlug}`}>
                 <span>{postModel.category}</span>
               </BackToHome>
             </BackToHomeContainer>
@@ -117,7 +129,7 @@ export default function Content({ article, postModel, minutesToRead }: any) {
           <BodyText>
             <div
               dangerouslySetInnerHTML={{
-                __html: marked.use(markedAlert()).parse(postModel.bodyText),
+                __html: postModel.bodyHtml,
               }}
             />
           </BodyText>

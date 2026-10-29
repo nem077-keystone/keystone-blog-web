@@ -6,20 +6,7 @@ import {
   PublishTime,
   Title,
 } from '@/components/CategoryCard/index.style'
-import { ButtonStyled } from '../Button/style'
 import { Category, CategoryAndPublishTime } from '../SubHeroCard/index.style'
-
-export const OtherCategoryWrapper = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 80px;
-  margin-top: 80px;
-  flex-direction: column;
-  @media ${DEVICE_QUERY_MOBILE} {
-    width: 100%;
-    gap: 48px;
-  }
-`
 
 export const CategoryName = styled.div`
   font-size: 32px;
@@ -43,9 +30,6 @@ export const Posts = styled.div`
   align-items: center;
   margin-top: 48px;
   gap: 48px;
-  ${ButtonStyled} {
-    width: fit-content;
-  }
   ${Category} {
     display: none;
   }

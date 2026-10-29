@@ -1,69 +1,51 @@
 import React from 'react'
 import readingTime from 'reading-time'
-import { postConverter } from './utils'
-import { getPostBySlug, getPostsAll } from '@/utils/api'
+import { toPostDetail } from './utils'
+import { getAllPosts, getPostBySlug } from '@/lib/blog/content'
 import Content from './Content'
-import { Metadata, ResolvingMetadata } from 'next'
-import { Post } from '@/types/postDetailPageType'
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import Script from 'next/script'
+import type { BlogPost } from '@/types/blog'
 
-// 强制动态渲染，禁用缓存
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
-const formatISODate = (dateString: string): string => {
-  const date = new Date(dateString)
-  return date.toISOString().replace('Z', '+08:00')
-}
-
-const createBlogPostingSchema = (article: Post, canonicalURL: string, summary: string) => {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    mainEntityOfPage: {
-      '@type': 'WebPage',
-      '@id': canonicalURL,
+const createBlogPostingSchema = (
+  article: BlogPost,
+  canonicalURL: string,
+  summary: string
+) => ({
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalURL },
+  headline: article.title,
+  description: summary || article.title,
+  image: article.heroImage,
+  author: { '@type': 'Person', name: 'Keystone Blog' },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Keystone',
+    logo: {
+      '@type': 'ImageObject',
+      url: 'https://keyst.one/assets/keystone-logo-k6ycS1NB.webp',
     },
-    headline: article.title,
-    description: summary || article.title,
-    image: article.hero_image.data.attributes.url,
-    author: {
-      '@type': 'Person',
-      name: 'Keystone Blog',
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Keystone',
-      logo: {
-        '@type': 'ImageObject',
-        url: 'https://keyst.one/assets/keystone-logo-k6ycS1NB.webp',
-      },
-    },
-    datePublished: formatISODate(article.publishedAt),
-    dateModified: formatISODate(article.updatedAt),
-    isAccessibleForFree: true,
-  }
-}
+  },
+  datePublished: article.publishedAt,
+  dateModified: article.updatedAt,
+  isAccessibleForFree: true,
+})
 
-export async function generateMetadata(
-  { params }: { params: { post: string } },
-  _parent: ResolvingMetadata
-): Promise<Metadata> {
-  const { post } = params
-  const article = await getPostBySlug(post).catch(() => null)
+export function generateMetadata({
+  params,
+}: {
+  params: { post: string }
+}): Metadata {
+  const article = getPostBySlug(params.post)
+  if (!article) return {}
 
-  if (!article) {
-    return {}
-  }
-
-  const postModel = postConverter(article.attributes)
-
+  const postModel = toPostDetail(article)
   return {
     title: postModel.seo.title,
     description: postModel.seo.description,
-    alternates: {
-      canonical: postModel.seo.canonicalURL,
-    },
+    alternates: { canonical: postModel.seo.canonicalURL },
     openGraph: {
       siteName: 'Keystone\'s Blog',
       type: 'article',
@@ -75,38 +57,20 @@ export async function generateMetadata(
   }
 }
 
-export async function generateStaticParams() {
-  const postAll = await getPostsAll()
-  return postAll.flatMap((item) => {
-    const slug = item?.attributes?.slug
-    return typeof slug === 'string' && slug.trim().length > 0
-      ? [{ post: slug }]
-      : []
-  })
+export function generateStaticParams() {
+  return getAllPosts().map(({ slug }) => ({ post: slug }))
 }
 
-export default async function PostDetail({
-  params,
-}: {
-  params: {
-    post: string
-  }
-}) {
-  const { post } = params
-  const article = await getPostBySlug(post).catch(() => null)
+export default function PostDetail({ params }: { params: { post: string } }) {
+  const article = getPostBySlug(params.post)
+  if (!article) notFound()
 
-  if (!article) {
-    return {
-      errorCode: 404,
-    }
-  }
-
-  const postModel = postConverter(article.attributes)
-  const minutesToRead = Math.ceil(readingTime(postModel.bodyText).minutes)
+  const postModel = toPostDetail(article)
+  const minutesToRead = Math.ceil(readingTime(article.body).minutes)
   const schema = createBlogPostingSchema(
-    article.attributes,
+    article,
     postModel.seo.canonicalURL,
-    postModel.summary
+    postModel.seo.description
   )
 
   return (
@@ -114,7 +78,7 @@ export default async function PostDetail({
       <Script
         id="blog-posting-schema"
         type="application/ld+json"
-        strategy='beforeInteractive'
+        strategy="beforeInteractive"
       >
         {JSON.stringify(schema)}
       </Script>
