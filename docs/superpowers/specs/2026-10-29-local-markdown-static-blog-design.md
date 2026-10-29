@@ -170,9 +170,12 @@ Repository verification includes the unit test suite, lint checks, a production 
 The README will explain:
 
 - the local directory layout;
-- the complete front matter format and defaults;
+- the complete Front Matter format and defaults in English;
+- every supported top-level and nested SEO field in a table with `Field`, `Description`, `Required`, `Default or fallback`, and `Example` columns;
 - how to add an article and its images;
 - how to configure the three homepage Heroes;
 - the sorting rule used by home and category pages;
 - local development and verification commands;
 - that deployment remains unchanged for this work and true static export is deferred.
+
+The README example and `content/article-template.md` include every supported field, including optional `publishedAt` and all three `seo` properties. The field table excludes `category` because category is derived from the parent directory and is not valid Front Matter. Required values use `Yes` or `No`, and all descriptions, fallbacks, and examples are written in English.
